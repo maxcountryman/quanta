@@ -18,7 +18,7 @@ your platform before running.
 ## Usage
 
 ```sh
-$ lein -- --addr localhost:3000 --peers localhost:3001
+$ lein run --addr 'localhost:3000' --peers 'localhost:3001 localhost:3002'
 ```
 
 Details coming later.

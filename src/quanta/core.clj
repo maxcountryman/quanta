@@ -1,5 +1,6 @@
 (ns quanta.core
-  (:require [clojure.tools.cli     :refer [cli]]
+  (:require [clojure.string        :as string]
+            [clojure.tools.cli     :refer [parse-opts]]
             [clojure.tools.logging :as log]
             [quanta.database       :as database]
             [quanta.node           :as node]
@@ -13,30 +14,29 @@
 
 (def specs
   [["-a"
-    "--addr"
+    "--addr ADDR"
     "Address to bind UDP socket to"
     :default "localhost:3000"]
    ["-p"
-    "--peers"
-    "Addresses of a known peers"]
+    "--peers PEERS"
+    "Addresses of a known peers"
+    :parse-fn #(string/split % #" ")]
     ["-h"
     "--help"
     "Print this help"
-    :default false
-    :flag true]])
+    :default false]])
 
 (defn -main
   [& args]
-  (let [[opts args banner] (apply cli args specs)]
-    (when (:help opts)
-      (println banner))
+  (let [{{:keys [addr help peers]} :options :as opts} (parse-opts args specs)]
+    (when help
+      (println (:summary opts)))
 
-    (when-not (:help opts)
-      (let [addr        (:addr opts)
-            peers       (into {} (map #(vector
+    (when-not help
+      (let [peers       (into {} (map #(vector
                                          (str "n:" %)
                                          {0 (node/time-stamp)})
-                                      [(:peers opts)]))
+                                      peers))
             [host port] (util/parse-addr addr)]
 
         (log/info "Starting quanta node on" addr)

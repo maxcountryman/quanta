@@ -105,7 +105,7 @@
   {:main     #(future (while @(:started? %)
                         (handler % (message/receive socket))))
    :started? (atom false)
-   :peers    (database/memory-store (atom (or peers {})))
+   :peers    (database/memory-store (atom peers))
    :store    store
    :socket   socket})
 
