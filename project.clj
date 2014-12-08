@@ -4,7 +4,6 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[com.cognitect/transit-clj "0.8.247"]
-                 [com.stuartsierra/component "0.2.1"]
                  [factual/clj-leveldb "0.1.1"]
                  [org.clojure/clojure "1.6.0"]
                  [org.clojure/tools.cli "0.3.1"]
