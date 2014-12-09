@@ -1,10 +1,19 @@
 # Quanta
 
-Quanta is a Clojure port of [Vignette](https://github.com/avibryant/vignette).
+*A Clojure port of [Vignette](https://github.com/avibryant/vignette).*
 
-A distributed CRDT where keys map to sparse vectors of integers. These vectors
-are updated only via element-wise max. This property makes updates idempotent,
-commutative, and associative--basic properties of a CRDT.
+Quanta is a distributed CRDT of keys and values.
+
+Keys may be associated with values, which are sparse vectors of integers.
+These vectors may be updated only via element-wise max. This constraint
+yields a CRDT property because the max operation is idempotent, commutative,
+and associative.
+
+What is a data type with such contraints useful for?
+
+A data structure with the above property can be used to construct vector
+clocks, bloom filters, and hyperloglog. It is useful so long as values may be
+represented as sparse vectors which grow monotonically.
 
 ## Status
 

@@ -8,8 +8,8 @@
 
   What is a datatype with such contraints useful for? A data structure with the
   above property can be used to construct vector clocks, bloom filters, and 
-  hyperloglog. So long as values may be represented as sparse vectors which
-  grow monotonically."
+  hyperloglog. It is useful so long as values may be represented as sparse
+  vectors which grow monotonically."
   (:require [clojure.string        :as string]
             [clojure.tools.cli     :refer [parse-opts]]
             [clojure.tools.logging :as log]
