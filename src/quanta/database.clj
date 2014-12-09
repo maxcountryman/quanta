@@ -182,7 +182,6 @@
   [store k v]
   (if-let [existing (get store k)]
     (reduce-kv (fn [updates i n]
-                 (prn :store store n v)
                  (let [m (core/get existing i 0)]
                    (if (> n m)
                      (do (put-with-merge! store k {i n} merge)
