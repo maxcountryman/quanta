@@ -1,4 +1,5 @@
 (ns quanta.message
+  "Message abstractions."
   (:require [clojure.tools.logging :as log]
             [cognitect.transit     :as transit]
             [quanta.udp            :as udp]
@@ -27,6 +28,9 @@
       (transit/read reader))))
 
 (defn receive
+  "Reads a DatagramPacket off the provided socket. Logs the output otherwise
+  the exception. Decodes the message, associating the sender's address onto the
+  message map, then returns this map."
   [socket]
   (let [^DatagramPacket packet (udp/receive socket udp/MAX-BUFFER-SIZE)]
     (try
@@ -39,6 +43,11 @@
         (log/error e "Could not receive message")))))
 
 (defn send
+  "Given a socket, address, and a message, sends the message. The socket
+  should be a DatagramSocket, e.g. as returned by udp/socket. The address
+  should be a string in the format host:port. Finally the message should be a
+  map, e.g. as returned by message/new. Logs the sent message, otherwise the
+  exception."
   [socket address msg]
   (try
     (let [[host port] (util/parse-addr address)
@@ -49,6 +58,6 @@
       (log/error e "Could not send message"))))
 
 (defn new
-  "Returns a new message, given a key, value, and TTL."
+  "Returns a new message map, given a key, value, and TTL."
   [k v ttl]
   {:k k :v v :ttl ttl})

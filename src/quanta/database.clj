@@ -1,4 +1,5 @@
 (ns quanta.database
+  "Persistence layer abstractions."
   (:refer-clojure :exclude [get])
   (:require [clj-leveldb                :as level]
             [clojure.core               :as core]
@@ -9,16 +10,77 @@
             [quanta.message             :as message])
   (:import [java.io Closeable]))
 
-(declare trigram-keys query-trigrams)
+;;
+;; Trigram indexing.
+;;
+
+;; To achieve wildcard queries, a virtual trigram index is used. This index is
+;; built by splitting keys into trigrams and storing those trigrams as keys.
+;; These contain sets of keys in the primary store. For example, the key
+;; "foobar" becomes ("foo" "oob" "oba" "bar"), each of these being a key in the
+;; trigram index containing the set #{"foobar"}.
+
+(defn n-grams
+  "Given n (gram size) and a string with which to make n-grams from, returns a
+  lazy sequence of n-grams."
+  [n s]
+  (partition n 1 s))
+
+(defn trigram-keys
+  "Returns a lazy sequence of trigrams of the given key."
+  [k]
+  (map (partial apply str) (n-grams 3 k)))
+
+(defn query-trigrams
+  "Queries the database by breaking the provided substring into trigrams and
+  then retrieving those. After retrieval the provided regex pattern is applied
+  to the result.
+
+  In the event the provided substring is fewer than three characters (i.e. not
+  a trigram), we iterate all the keys, keeping any that contain the substring.
+  These are then filtered as above, using regex.
+
+  Returns a list of matching keys. These keys reside in the primary database.
+  Note that this implies the trigram index was populated in tandem with the
+  primary."
+  [db s re]
+  (when-let [ks (if (> (count s) 2)
+                  ;; Find exact trigrams, retrieve their keys' sets.
+                  (reduce (fn [acc trigram]
+                            (if-let [ks (level/get db trigram)]
+                              (conj acc ks)
+                              acc))
+                          ()
+                          (trigram-keys s))
+
+                  ;; Traverse trigrams, searching for any containing the
+                  ;; substring s, retrieve their keys' sets.
+                  (reduce (fn [acc [trigram ks]]
+                            (if (.contains ^String trigram s)
+                              (conj acc ks)
+                              acc))
+                          ()
+                          (level/iterator db)))]
+    (->> ks
+         (apply union)
+         (filter #(re-matches re %)))))
+
+;;
+;; Store abstraction.
+;;
 
 (defn k->re-s
+  "Returns a tuple where the first element is a regex pattern and the second
+  is a substring."
   [k]
-  [(re-pattern (-> k
-                   (string/replace "." "[.]")
-                   (string/replace "%" ".*")))
-   (string/replace k "%" "")])
+  (vector (re-pattern (-> k
+                          (string/replace "." "[.]")
+                          (string/replace "%" ".*")
+                          (string/replace "*" ".*")))
+          (-> k
+              (string/replace "%" "")
+              (string/replace "*" ""))))
 
-;; Store abstraction, borrowed from Tom Crayford's liza library. Thanks, Tom!
 (defprotocol Store
   (get [s k])
   (match [s substring])
@@ -46,7 +108,10 @@
   (deref [_]
     @a))
 
-(defn memory-store [a] (MemoryStore. a))
+(defn memory-store
+  "Given an atom, returns a new MemoryStore."
+  [a]
+  (MemoryStore. a))
 
 (deftype LevelDBStore [db tindex]
   Store
@@ -69,14 +134,20 @@
     v))
 
 (defn create-db
+  "Given a path, returns a Closeable database object with preset key-decoder,
+  val-encoder, val-decoder: byte-streams/to-string, message/encode,
+  message/decode, respeactively."
   [path]
   (level/create-db path {:key-decoder byte-streams/to-string
                          :val-encoder message/encode
                          :val-decoder message/decode}))
 
 (defn leveldb-store
+  "Given a primary path and trigram path, returns a new LevelDBStore."
   [ppath tpath]
   (LevelDBStore. (create-db ppath) (create-db tpath)))
+
+;; 
 
 (defn put-with-merge!
   "Puts a value into the store but first checks to see if the key already
@@ -87,9 +158,9 @@
                   (merge-fn existing v)
                   v)))
 
-(defn element-wise-max
-  "Returns a map where stored values which are larger than or do not appear in
-  the provided map are returned."
+(defn max-vector
+  "Returns a map of only indices which either do not exist or are larger than
+  provided values."
   [store k v]
   (when-let [existing (get store k)]
     (if (empty? v)
@@ -103,9 +174,9 @@
                         v)
              (first (diff existing v))))))
 
-(defn update!
-  "Updates the db where provided values are larger than local values and
-  returns a map of the same data."
+(defn update-vector!
+  "Updates the store where provided vector indices either do not exist or are
+  larger than stored values. Returns a map of any updates."
   [store k v]
   (if-let [existing (get store k)]
     (reduce-kv (fn [updates i n]
@@ -117,43 +188,3 @@
                {}
                v)
     (put! store k v)))
-
-;; Trigram indexing.
-;;
-;; To achieve wildcard queries, a virtual trigram index is used. This index is
-;; built by splitting keys into trigrams and storing those trigrams as keys.
-;; These contain sets of keys in the primary store. For example, the key
-;; "foobar" becomes ("foo" "oob" "oba" "bar"), each of these being a key in the
-;; trigram index containing the set #{"foobar"}.
-
-(defn n-grams [n s] (partition n 1 s))
-
-(defn trigram-keys
-  "Returns a lazy sequence of trigrams of the given key."
-  [k]
-  (map (partial apply str) (n-grams 3 k)))
-
-(defn query-trigrams
-  "Queries a virtual index for a given substring, returning any keys which
-  match."
-  [db s re]
-  (when-let [ks (if (> (count s) 2)
-                  ;; Find exact trigrams, retrieve their keys' sets.
-                  (reduce (fn [acc trigram]
-                            (if-let [ks (level/get db trigram)]
-                              (conj acc ks)
-                              acc))
-                          ()
-                          (trigram-keys s))
-
-                  ;; Traverse trigrams, searching for any containing s,
-                  ;; retrieve their keys' sets.
-                  (reduce (fn [acc [trigram ks]]
-                            (if (.contains ^String trigram s)
-                              (conj acc ks)
-                              acc))
-                          ()
-                          (level/iterator db)))]
-    (->> ks
-         (apply union)
-         (filter #(re-matches re %)))))

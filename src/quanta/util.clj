@@ -1,4 +1,5 @@
 (ns quanta.util
+  "Utility functions."
   (:require [clojure.string :as string]))
 
 (defn parse-int [^String s] (Integer. s))

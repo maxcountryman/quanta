@@ -1,4 +1,15 @@
 (ns quanta.core
+  "Quanta is a distributed CRDT of keys and values.
+
+  Keys may be associated with values, which are sparse vectors of integers.
+  These vectors may be updated only via element-wise max. This constraint
+  yields a CRDT property because the max operation is idempotent, commutative,
+  and associative.
+
+  What is a datatype with such contraints useful for? A data structure with the
+  above property can be used to construct vector clocks, bloom filters, and 
+  hyperloglog. So long as values may be represented as sparse vectors which
+  grow monotonically."
   (:require [clojure.string        :as string]
             [clojure.tools.cli     :refer [parse-opts]]
             [clojure.tools.logging :as log]
