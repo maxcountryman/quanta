@@ -147,7 +147,9 @@
   [ppath tpath]
   (LevelDBStore. (create-db ppath) (create-db tpath)))
 
-;; 
+;;
+;; Query functions.
+;;
 
 (defn put-with-merge!
   "Puts a value into the store but first checks to see if the key already
@@ -180,6 +182,7 @@
   [store k v]
   (if-let [existing (get store k)]
     (reduce-kv (fn [updates i n]
+                 (prn :store store n v)
                  (let [m (core/get existing i 0)]
                    (if (> n m)
                      (do (put-with-merge! store k {i n} merge)

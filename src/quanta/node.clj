@@ -15,22 +15,28 @@
   (str "n:" (.getHostName sa) ":" (.getPort sa)))
 
 (defn peer-key->addr
-  "Converts a peer key to an address string."
+  "Converts a peer key string to an address string."
   [peer-key]
   (->> (string/split peer-key #":")
        (drop 1)
        (string/join ":")))
 
+(defn addr->peer-key
+  "Converts an address string to a peer key string."
+  [addr]
+  (str "n:" addr))
+
 (defn rand-peer-addr
   "Returns a random peer address, excluding this node's address."
-  [{:keys [^DatagramSocket socket peers]}]
+  [{:keys [^DatagramSocket socket peers]} addr]
   (let [node-key (-> socket
                      .getLocalSocketAddress
-                     socket-address->peer-key)]
+                     socket-address->peer-key)
+        peer-key (addr->peer-key addr)]
 
     ;; TODO -- Should filter out nodes which we haven't seen in a while here.
     (some-> @peers
-            (dissoc node-key)
+            (dissoc node-key peer-key)
             keys
             rand-nth
             peer-key->addr)))
@@ -109,7 +115,7 @@
   ;; we won't otherwise forward on to other peers.
   (let [updates (database/update-vector! store k v)]
     (when (and (seq updates) (> ttl 0))
-      (when-let [peer-addr (rand-peer-addr node)]
+      (when-let [peer-addr (rand-peer-addr node addr)]
         (send-message node peer-addr k updates (dec ttl))))))
 
 (defmethod handler :default
