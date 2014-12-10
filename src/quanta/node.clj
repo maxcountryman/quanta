@@ -168,6 +168,12 @@
                       :store  (database/leveldb-store
                                 (format ".quanta-primary-%s-%d" host port)
                                 (format ".quanta-trigram-%s-%d" host port)))]
+      ;; Bootstrap peer list by requesting a random peer's peer list. Note that
+      ;; this triggers additional traffic since each received message will in
+      ;; turn generate heartbeat messages to other random peers.
+      (when-let [peer-addr (rand-peer-addr node addr)]
+        (send-message node peer-addr "n:%" {}))
+
       (assoc node :thread (main node)))))
 
 (defn stop
