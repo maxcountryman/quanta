@@ -12,11 +12,6 @@
 ;; Utilities.
 ;;
 
-(defn socket-address->peer-key
-  "Converts a SocketAddress into a peer key."
-  [^InetSocketAddress sa]
-  (str "n:" (.getHostName sa) ":" (.getPort sa)))
-
 (defn peer-key->addr
   "Converts a peer key string to an address string."
   [peer-key]
@@ -32,11 +27,9 @@
 (defn rand-peer-addr
   "Returns a random peer address, excluding this node's address and the sending
   node's address."
-  [{:keys [^DatagramSocket socket peers]} addr]
-  (let [node-key (-> socket
-                     .getLocalSocketAddress
-                     socket-address->peer-key)
-        peer-key (addr->peer-key addr)]
+  [{:keys [addr peers]} msg-addr]
+  (let [node-key (addr->peer-key addr)
+        peer-key (addr->peer-key msg-addr)]
 
     ;; TODO -- Should filter out nodes which we haven't seen in a while here.
     (some-> @peers
@@ -61,6 +54,12 @@
   [{:keys [addr]}]
   (-> (message/new (str "n:" addr) {0 (time-stamp)} 1)
       (assoc :addr addr)))
+
+(defn this?
+  "Returns true if the message is a heartbeat whose key matches this node's
+  address, otherwise false."
+  [{:keys [addr]} {:keys [k]}]
+  (= (addr->peer-key addr) k))
 
 (defn send-message
   "Given a node map, an address string, a key, a value, and optionally a TTL,
@@ -125,8 +124,29 @@
 (defmethod handler :default
   [{:keys [peers store] :as node} msg]
   (let [store (if (heartbeat? msg) peers store)]
-    (handle-default node store (heartbeat msg))
-    (handle-default node store msg)))
+    ;; Only process a message when it's not a heartbeat for the current node.
+    ;; The idea here is to filter out messages about ourselves, since they are
+    ;; unnecessary.
+    (when-not (this? node msg)
+      (handle-default node store (heartbeat msg))
+      (handle-default node store msg))))
+
+(defn handle-search
+  [node store {:keys [addr k v ttl]}]
+  (when (> ttl 0)
+    (doseq [match (database/match store k)]
+      (handle-default node store (-> (message/new match v ttl)
+                                     (assoc :addr addr))))))
+
+(defmethod handler :search
+  [{:keys [peers store] :as node} msg]
+  (let [store (if (heartbeat? msg) peers store)]
+    ;; Only process a message when it's not a heartbeat for the current node.
+    ;; The idea here is to filter out messages about ourselves, since they are
+    ;; unnecessary.
+    (when-not (this? node msg)
+      (handle-default node store (heartbeat msg))
+      (handle-search node store msg))))
 
 (defn handle-aggregate
   [node store {:keys [addr k v ttl]}]
@@ -140,21 +160,9 @@
 (defmethod handler :aggregate
   [{:keys [peers store] :as node} msg]
   (let [store (if (heartbeat? msg) peers store)]
-    ;; (handler node (heartbeat msg))
-    (handle-aggregate node store msg)))
-
-(defn handle-search
-  [node store {:keys [addr k v ttl]}]
-  (when (> ttl 0)
-    (doseq [match (database/match store k)]
-      (handle-default node store (-> (message/new match v ttl)
-                                     (assoc :addr addr))))))
-
-(defmethod handler :search
-  [{:keys [peers store] :as node} msg]
-  (let [store (if (heartbeat? msg) peers store)]
-    ;; (handler node (heartbeat msg))
-    (handle-search node store msg)))
+    (when-not (this? node msg)
+      (handle-default node store (heartbeat msg))
+      (handle-aggregate node store msg))))
 
 ;;
 ;; Node lifecycle.
