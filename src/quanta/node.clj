@@ -1,8 +1,11 @@
 (ns quanta.node
   "Node logic."
-  (:require [clojure.string        :as string]
+  (:require [clojure.tools.logging :as log]
+            [clojure.string        :as string]
             [quanta.database       :as database]
-            [quanta.message        :as message])
+            [quanta.message        :as message]
+            [quanta.udp            :as udp]
+            [quanta.util           :as util])
   (:import [java.net DatagramSocket InetSocketAddress]))
 
 ;;
@@ -27,7 +30,8 @@
   (str "n:" addr))
 
 (defn rand-peer-addr
-  "Returns a random peer address, excluding this node's address."
+  "Returns a random peer address, excluding this node's address and the sending
+  node's address."
   [{:keys [^DatagramSocket socket peers]} addr]
   (let [node-key (-> socket
                      .getLocalSocketAddress
@@ -102,7 +106,7 @@
     (handle-search node store msg)))
 
 (defn handle-default
-  [node store {:keys [addr k v ttl]}]
+  [node store {:keys [addr k v ttl] :as msg}]
   (when (> ttl 0)
     ;; Send any diffs on the remote's vector back to the message sender.
     (let [updates (database/max-vector store k v)]
@@ -129,25 +133,45 @@
 ;;
 
 (defn new
-  "Given a DatagramSocket, a Store, and a list of peers, returns a map that
-  represents a node in an unstarted state. This map may be passed to the start
-  and stop functions."
-  [^DatagramSocket socket store peers]
-  {:main     #(future (while @(:started? %)
-                        (handler % (message/receive socket))))
-   :started? (atom false)
-   :peers    (database/memory-store (atom peers))
-   :store    store
-   :socket   socket})
+  "Creates a new node map with a main loop function. This may be passed to the
+  start function to setup necessary runtime processes and execute the main
+  loop. Likewise it may also be passed to the stop function to reverse this."
+  [addr peers]
+  {:addr  addr
+   :peers (database/memory-store (atom peers))
+   :main  #(future
+             (try (while true
+                    (handler % (message/receive (:socket %))))
+                  (catch Exception e
+                    (log/error e))))})
 
 (defn start
-  "Given a node map, sets the started? atom to true and executes its main
-  function."
-  [{:keys [main started?] :as node}]
-  (swap! started? (constantly true))
-  (main node))
+  "Given a node map, starts all the processes needed and adds them to the map
+  if the node has not already been started. Otherwise returns the provided map
+  unaltered. Calling this function is idempotent."
+  [{:keys [addr thread main] :as node}]
+  (if thread
+    node
+    (let [[host port] (util/parse-addr addr)
+          node (assoc node
+                      :socket (udp/socket host port)
+                      :store  (database/leveldb-store
+                                (format ".quanta-primary-%s-%d" host port)
+                                (format ".quanta-trigram-%s-%d" host port)))]
+      (assoc node :thread (main node)))))
 
 (defn stop
-  "Given a node map, sets the started? atom to false."
-  [{:keys [started?]}]
-  (swap! started? (constantly false)))
+  "Given a node map, stops all the active proccesses and removes them from the
+  map if the node has been started. Otherwise returns the provided map
+  unaltered. Calling this function is idempotent."
+  [{:keys [socket store thread] :as node}]
+  (if thread
+    (do (future-cancel thread)
+        (.close store)
+        (.close socket)
+        (dissoc node :thread :socket :store))
+    node))
+
+(def ^{:doc "Stops then starts a given node map."}
+  restart
+  (comp start stop))

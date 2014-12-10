@@ -131,7 +131,12 @@
                                     (union existing #{k})
                                     #{k}))))
     (level/put db k v)
-    v))
+    v)
+
+  Closeable
+  (close [_]
+    (.close db)
+    (.close tindex)))
 
 (defn create-db
   "Given a path, returns a Closeable database object with preset key-decoder,
