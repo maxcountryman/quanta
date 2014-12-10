@@ -77,6 +77,24 @@
 ;; Message handling.
 ;;
 
+;; Messages are processed by type, where the types are a default, a search,
+;; and an aggregate query. Each type is handled separately, however where
+;; possible the codepaths are shared, e.g. when handling a search query, each
+;; returned message is handled by the default query codepath--aggregates are an
+;; exception to this rule.
+;;
+;; When a message is routed, we check the TTL and assuming it's larger than
+;; zero, proceed. Also a heartbeat for the message sender is processed at this
+;; point. These gossip messages are forwarded to a random node from this node's
+;; peer list with the exclusion of the current node.
+;;
+;; For default and search queries, where a sent vector's indices are smaller
+;; than or missing from the node's persisted vectors, we generate an update
+;; vector which we send back to the sender, decrementing the TTL. Where a sent
+;; vector's indices are larger than or missing from the node's persisted
+;; vectors, we generate an update vector which we sernd forward to a random
+;; node, excluding the sender.
+
 (defn message-type
   "Returns either :aggregate, :search, or :default."
   [_ {:keys [k]}]
