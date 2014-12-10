@@ -87,24 +87,6 @@
 
 (defmulti handler message-type)
 
-(defmethod handler :aggregate
-  [node msg]
-  ;; TODO -- Aggregated searches.
-  (prn :aggregate node msg))
-
-(defn handle-search
-  [node store {:keys [addr k v ttl]}]
-  (when (> ttl 0)
-    (doseq [match (database/match store k)]
-      (handler node (-> (message/new match v ttl)
-                        (assoc :addr addr))))))
-
-(defmethod handler :search
-  [{:keys [peers store] :as node} msg]
-  (let [store (if (heartbeat? msg) peers store)]
-    ;; (handler node (heartbeat msg))
-    (handle-search node store msg)))
-
 (defn handle-default
   [node store {:keys [addr k v ttl] :as msg}]
   (when (> ttl 0)
@@ -127,6 +109,34 @@
   (let [store (if (heartbeat? msg) peers store)]
     (handle-default node store (heartbeat msg))
     (handle-default node store msg)))
+
+(defn handle-aggregate
+  [node store {:keys [addr k v ttl]}]
+  (when (> ttl 0)
+    (let [agg (->> (database/match store k)
+                   (map (partial database/get store))
+                   (remove empty?)
+                   (apply merge-with max))]
+      (send-message node addr k agg (dec ttl)))))
+
+(defmethod handler :aggregate
+  [{:keys [peers store] :as node} msg]
+  (let [store (if (heartbeat? msg) peers store)]
+    ;; (handler node (heartbeat msg))
+    (handle-aggregate node store msg)))
+
+(defn handle-search
+  [node store {:keys [addr k v ttl]}]
+  (when (> ttl 0)
+    (doseq [match (database/match store k)]
+      (handle-default node store (-> (message/new match v ttl)
+                                     (assoc :addr addr))))))
+
+(defmethod handler :search
+  [{:keys [peers store] :as node} msg]
+  (let [store (if (heartbeat? msg) peers store)]
+    ;; (handler node (heartbeat msg))
+    (handle-search node store msg)))
 
 ;;
 ;; Node lifecycle.
