@@ -6,10 +6,9 @@
   yields a CRDT property because the max operation is idempotent, commutative,
   and associative.
 
-  What is a datatype with such contraints useful for? A data structure with the
-  above property can be used to construct vector clocks, bloom filters, and 
-  hyperloglog. It is useful so long as values may be represented as sparse
-  vectors which grow monotonically."
+  This quality makes Quanta useful as a kind of sketch database. For example,
+  HyperLogLog can be implemented with the above constraints. Other possible
+  uses include bloom filters, vector clocks, and min-hashes."
   (:require [clojure.string        :as string]
             [clojure.tools.cli     :refer [parse-opts]]
             [clojure.tools.logging :as log]
@@ -20,9 +19,13 @@
 
 (def specs
   [["-a"
-    "--addr ADDR"
+    "--node-addr NODEADDR"
     "Address to bind UDP socket to"
     :default "localhost:3000"]
+   ["-H"
+    "--http-addr HTTPADDR"
+    "Address to bind HTTP server to"
+    :default "localhost:3100"]
    ["-p"
     "--peers PEERS"
     "Addresses of known peers"
@@ -41,11 +44,13 @@
 
 (defn -main
   [& args]
-  (let [{{:keys [addr help peers]} :options :as opts} (parse-opts args specs)]
+  (let [{:keys [summary] {:keys [help http-addr node-addr peers]} :options}
+        (parse-opts args specs)]
     (when help
-      (println (:summary opts)))
+      (println summary))
 
     (when-not help
       (let [peers (peer-map peers)]
-        (log/info "Starting quanta node on" addr)
-        (-> (node/new addr peers) node/start)))))
+        (log/info "Starting quanta node on" node-addr)
+        (log/info "Starting HTTP server on" http-addr)
+        (-> (node/new node-addr http-addr peers) node/start)))))

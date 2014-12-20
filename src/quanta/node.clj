@@ -3,6 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [clojure.string        :as string]
             [quanta.database       :as database]
+            [quanta.http           :as http]
             [quanta.message        :as message]
             [quanta.udp            :as udp]
             [quanta.util           :as util])
@@ -172,46 +173,53 @@
   "Creates a new node map with a main loop function. This may be passed to the
   start function to setup necessary runtime processes and execute the main
   loop. Likewise it may also be passed to the stop function to reverse this."
-  [addr peers]
-  {:addr  addr
-   :peers (database/memory-store (atom peers))
-   :main  #(future
-             (try (while true
-                    (handler % (message/receive (:socket %))))
-                  (catch Exception e
-                    (log/error e))))})
+  [node-addr http-addr peers]
+  {:node-addr node-addr
+   :http-addr http-addr
+   :peers     (database/memory-store (atom peers))
+   :main      #(future
+                 (try (while true
+                        (handler % (message/receive (:socket %))))
+                      (catch Exception e
+                        (log/error e))))})
 
 (defn start
   "Given a node map, starts all the processes needed and adds them to the map
   if the node has not already been started. Otherwise returns the provided map
   unaltered. Calling this function is idempotent."
-  [{:keys [addr thread main] :as node}]
-  (if thread
+  [{:keys [http-addr main node-addr running] :as node}]
+  (if running
     node
-    (let [[host port] (util/parse-addr addr)
+    (let [[host port] (util/parse-addr node-addr)
           node (assoc node
                       :socket (udp/socket host port)
                       :store  (database/leveldb-store
                                 (format ".quanta-primary-%s-%d" host port)
                                 (format ".quanta-trigram-%s-%d" host port)))]
+
       ;; Bootstrap peer list by requesting a random peer's peer list. Note that
       ;; this triggers additional traffic since each received message will in
       ;; turn generate heartbeat messages to other random peers.
-      (when-let [peer-addr (rand-peer-addr node addr)]
+      (when-let [peer-addr (rand-peer-addr node node-addr)]
+        (log/info "Bootstrapping peerlist")
         (send-message node peer-addr "n:%" {}))
 
-      (assoc node :thread (main node)))))
+      (-> node
+          (assoc :running (main node))
+          (assoc :server (apply (partial http/new node)
+                                (util/parse-addr http-addr)))))))
 
 (defn stop
   "Given a node map, stops all the active proccesses and removes them from the
   map if the node has been started. Otherwise returns the provided map
   unaltered. Calling this function is idempotent."
-  [{:keys [socket store thread] :as node}]
-  (if thread
-    (do (future-cancel thread)
+  [{:keys [running server socket store] :as node}]
+  (if running
+    (do (future-cancel running)
+        (.close server)
         (.close store)
         (.close socket)
-        (dissoc node :thread :socket :store))
+        (dissoc node :running :server :socket :store))
     node))
 
 (def ^{:doc "Stops then starts a given node map."}
