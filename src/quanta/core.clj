@@ -14,13 +14,21 @@
             [clojure.tools.logging :as log]
             [quanta.database       :as database]
             [quanta.node           :as node]
-            [quanta.udp            :as udp])
+            [quanta.udp            :as udp]
+            [quanta.util           :as util])
   (:gen-class))
 
 (def specs
   [["-a"
     "--node-addr NODEADDR"
     "Address to bind UDP socket to"
+    :assoc-fn (fn [m k v]
+                (let [[host port] (util/parse-addr v)]
+                  ;; Increment the HTTP server port by 100.
+                  (-> m
+                      (update-in [:http-addr] (constantly
+                                                (str host ":" (+ port 100))))
+                      (assoc k v))))
     :default "localhost:3000"]
    ["-H"
     "--http-addr HTTPADDR"
