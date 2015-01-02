@@ -13,6 +13,7 @@
             [clojure.tools.cli     :refer [parse-opts]]
             [clojure.tools.logging :as log]
             [quanta.database       :as database]
+            [quanta.handler        :as handler]
             [quanta.node           :as node]
             [quanta.udp            :as udp]
             [quanta.util           :as util])
@@ -47,7 +48,7 @@
   [peers]
   (into {} (map #(vector
                    (str "n:" %)
-                   {0 (node/time-stamp)})
+                   {0 (handler/timestamp)})
                 peers)))
 
 (defn -main
