@@ -28,7 +28,7 @@
 ;; TODO: Stricter evaluation of vector, e.g. need to ensure indices are longs!
 (defn ensure-vector
   [{{:strs [v]} :body}]
-  (when-not (instance? clojure.lang.MapEquivalence v)
+  (when-not (map? v)
     {:status 400 :body "Malformed vector"}))
 
 (defn keys->longs
