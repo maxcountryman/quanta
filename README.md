@@ -57,7 +57,7 @@ with larger values than provided will be return in the response as a
 JSON-encoded vector.
 
 Retrieving a key is a special case of setting a key. Sending an empty vector
-to a node will cause the node to return the vector in its entiritey:
+to a node will cause the node to return the vector in its entirety:
 
 ```sh
 $ curl -XPUT localhost:3000 \
@@ -66,6 +66,19 @@ $ curl -XPUT localhost:3000 \
 ```
 
 The response will contain the complete vector the node is currently aware of.
+This will look something like:
+
+```json
+[
+  {
+    "k": "foo",
+    "v": {
+      "0": 42
+    },
+    "ttl": 0
+  }
+]
+```
 
 Finally the same method can be used for searches and aggregates. For example,
 we can retrieve a list of vectors for all keys prefixed with "foo":
