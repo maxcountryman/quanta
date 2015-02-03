@@ -75,8 +75,8 @@
   [k]
   (vector (re-pattern (-> k
                           (string/replace "." "[.]")
-                          (string/replace "%" ".*")
-                          (string/replace "*" ".*")))
+                          (string/replace "*" ".*")
+                          (string/replace "%" ".*")))
           (-> k
               (string/replace "%" "")
               (string/replace "*" ""))))
@@ -120,6 +120,7 @@
 
   (match [_ substring]
     (let [[re s] (k->re-s substring)]
+      ;;(prn re s)
       (query-trigrams tindex s re)))
 
   (put! [_ k v]
