@@ -2,6 +2,8 @@
 
 *A Clojure port of [Vignette](https://github.com/avibryant/vignette).*
 
+[![Build Status](https://travis-ci.org/maxcountryman/quanta.svg?branch=master)](https://travis-ci.org/maxcountryman/quanta)
+
 Quanta is a distributed CRDT of keys and values.
 
 Keys may be associated with values, which are sparse vectors of integers.
