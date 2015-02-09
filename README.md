@@ -3,6 +3,7 @@
 *A Clojure port of [Vignette](https://github.com/avibryant/vignette).*
 
 [![Build Status](https://travis-ci.org/maxcountryman/quanta.svg?branch=master)](https://travis-ci.org/maxcountryman/quanta)
+[![Clojars Project](http://clojars.org/quanta/latest-version.svg)](http://clojars.org/quanta)
 
 Quanta is a distributed CRDT of keys and values.
 
