@@ -3,7 +3,6 @@
 *A Clojure port of [Vignette](https://github.com/avibryant/vignette).*
 
 [![Build Status](https://travis-ci.org/maxcountryman/quanta.svg?branch=master)](https://travis-ci.org/maxcountryman/quanta)
-[![Clojars Project](http://clojars.org/quanta/latest-version.svg)](http://clojars.org/quanta)
 
 Quanta is a distributed CRDT of keys and values.
 
@@ -26,6 +25,10 @@ Under development and totally unsuitable for production use!
 
 Currently, Quanta nodes are backed by LevelDB. Ensure LevelDB is installed on
 your platform before running.
+
+Quanta is available on Clojars.
+
+[![Clojars Project](http://clojars.org/quanta/latest-version.svg)](http://clojars.org/quanta)
 
 ## Usage
 
