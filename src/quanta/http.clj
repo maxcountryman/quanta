@@ -51,8 +51,8 @@
     (or (some-errors request)
         (let [msg {:k k :v (keys->longs v) :ttl (or ttl 1)}
               {:keys [forwards responses]} (handler/handle-message node msg)]
-          (when-let [peer (handler/rand-peer node)]
-            (when (seq forwards)
+          (when (seq forwards)
+            (when-let [peer (handler/rand-peer node)]
               (handler/send-messages socket peer forwards)))
           (if (every? #(= msg %) responses)
             {:status 201 :body responses}
