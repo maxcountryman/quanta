@@ -25,6 +25,7 @@
    :main      #(future
                  (try (while true
                         (->> (message/receive (:socket %))
+                             (handler/update-peer-list! %)
                              (handler/handle-message %)
                              (handler/send-responses %)))
                       (catch Exception e

@@ -98,6 +98,12 @@
     "%" :search
     :default))
 
+(defn update-peer-list!
+  [{:keys [peers] :as node} {:keys [addr] :as msg}]
+  (when addr
+    (database/update-vector! peers (addr->peer-key addr) {0 (timestamp)}))
+  msg)
+
 (defmulti handle-message message-type)
 
 (defmethod handle-message :default
