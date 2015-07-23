@@ -55,5 +55,5 @@
     (is (= a b))))
 
 (deftest ^:benchmark test-tree-perf
-  (let [kvs (take 1e5 (iterate (fn [[x y]] [(inc x) (inc y)]) [0 0]))]
+  (let [kvs (take 1e2 (iterate (fn [[x y]] (map inc [x y])) [0 0]))]
     (cr/with-progress-reporting (cr/bench (merkle/tree kvs)))))
