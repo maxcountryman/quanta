@@ -41,7 +41,7 @@
 (defmulti response :request-method)
 
 (defmethod response :put
-  [{:keys [k node]
+  [{:keys [node]
     {:keys [socket node-addr]} :node
     {:strs [k v ttl]} :body :as request}]
   (let [some-errors (some-fn ensure-json
