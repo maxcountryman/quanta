@@ -119,8 +119,12 @@
         ks    (database/match store k)
         msgs  (map #(-> (message/new % v ttl)
                         (assoc :addr addr)) ks)]
-    (apply (partial merge-with conj)
-           (map #(handle-message node %) msgs))))
+
+    (apply (partial merge-with (fn [left right]
+                                 (if (seq? left)
+                                   (concat left right)
+                                   left)))
+           (map (partial handle-message node) msgs))))
 
 (defmethod handle-message :aggregate
   [node {:keys [addr k v ttl]}]
