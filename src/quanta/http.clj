@@ -70,11 +70,13 @@
   "Middleware which provides various HTTP endpoints. In particular this exposes
   a health endpoint, a key retrieval endpoint, and a key setting endpoint. An
   HTTP client may be used to access these endpoints."
-  [handler {:keys [peers] :as node}]
+  [handler {:keys [merkle-root peers] :as node}]
   (fn [request]
     (condp route-matches request
       "/health" {:status 200
-                 :body   {:status :okay :peers @peers}}
+                 :body   {:status :okay
+                          :peers @peers
+                          :merkle-root (:hash @merkle-root)}}
       "/"       (-> request
                     (assoc :node node)
                     response)

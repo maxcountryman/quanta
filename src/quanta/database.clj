@@ -7,6 +7,7 @@
             [clojure.tools.logging      :as log]
             [clojure.set                :refer [difference union]]
             [clojure.string             :as string]
+            [quanta.merkle              :as merkle]
             [quanta.message             :as message])
   (:import [java.io Closeable]))
 
@@ -196,3 +197,14 @@
                {}
                v)
     (put! store k v)))
+
+;;
+;; Merkle tree.
+;;
+
+(defn build-merkle-tree
+  "Given a LevelDB database, creates a new Merkle tree from its keys and
+  values in a separate thread. Returns the future where this construction
+  happens."
+  [db]
+  (future (merkle/tree (level/iterator db))))

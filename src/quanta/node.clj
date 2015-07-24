@@ -40,11 +40,13 @@
     node
     (let [[host port] (util/parse-addr node-addr)
           socket (udp/socket host port)
+          store (database/leveldb-store
+                  (format ".quanta-primary-%s-%d" host port)
+                  (format ".quanta-trigram-%s-%d" host port))
           node (assoc node
                       :socket socket
-                      :store  (database/leveldb-store
-                                (format ".quanta-primary-%s-%d" host port)
-                                (format ".quanta-trigram-%s-%d" host port)))]
+                      :store store
+                      :merkle-root (database/build-merkle-tree (.db store)))]
 
       ;; Bootstrap peer list by requesting a random peer's peer list. Note that
       ;; this triggers additional traffic since each received message will in
