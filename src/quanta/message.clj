@@ -52,8 +52,8 @@
   (try
     (let [[host port] (util/parse-addr address)
           bs          (encode msg)]
-      (log/info "Sent message ->" msg "to" address)
-      (udp/send socket host port bs))
+      (udp/send socket host port bs)
+      (log/info "Sent message ->" msg "to" address))
     (catch Exception e
       (log/error e "Could not send message"))))
 
