@@ -37,7 +37,8 @@
       (let [addr (let [^InetSocketAddress sa (.getSocketAddress packet)]
                    (str (.getHostName sa) ":" (.getPort sa)))
             msg  (-> (decode (.getData packet)) (assoc :addr addr))]
-        (log/info "Received message ->" msg))
+        (log/info "Received message ->" msg)
+        msg)
       (catch Exception e
         (log/error e "Could not receive message")))))
 
