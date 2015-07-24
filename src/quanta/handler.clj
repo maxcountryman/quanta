@@ -34,7 +34,8 @@
   "Sends messages via the given socket to the given address. Messages are
   assumed to be a sequence of messages formatted via message/new."
   [socket addr messages]
-  (pmap (partial message/send socket addr) messages))
+  (doseq [message messages]
+    (message/send socket addr message)))
 
 (defn send-responses
   "Sends forwards and responses, when they exist, to a random peer and the
