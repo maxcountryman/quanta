@@ -26,7 +26,7 @@
 
 (defn send-heartbeat
   "Sends a heartbeat message to a peer."
-  [{:keys [socket]} peer addr]
+  [socket peer addr]
   (->> (message/new (addr->peer-key addr) {0 (timestamp)} 0)
        (message/send socket peer)))
 
