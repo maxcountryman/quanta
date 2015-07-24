@@ -47,8 +47,8 @@
   ;;
   ;; TODO: Possibly this should forward to N + 1 / 2 peers, where N is the
   ;;       number of known peers.
-  (when-let [peer (rand-peer node)]
-    (when (seq forwards)
+  (when (seq forwards)
+    (when-let [peer (rand-peer node)]
       (send-heartbeat socket peer addr)
       (send-messages socket peer forwards)))
 
