@@ -10,13 +10,16 @@
 
 (def ^{:const true} TRANSIT-FORMAT :msgpack)
 
+(defrecord Message [n k v ttl])
+
 (defn encode
   "Writes message with MessagePack format into a ByteArrayOutputStream as
   transit data. Returns the output stream."
-  [message]
+  [^Message msg]
   (let [out    (ByteArrayOutputStream.)
-        writer (transit/writer out TRANSIT-FORMAT)]
-    (transit/write writer message)
+        handlers (transit/record-write-handlers Message)
+        writer (transit/writer out TRANSIT-FORMAT {:handlers handlers})]
+    (transit/write writer msg)
     (.toByteArray out)))
 
 (defn decode
@@ -24,7 +27,8 @@
   [bs]
   (when bs
     (let [in     (ByteArrayInputStream. bs)
-          reader (transit/reader in TRANSIT-FORMAT)]
+          handlers (transit/record-read-handlers Message)
+          reader (transit/reader in TRANSIT-FORMAT {:handlers handlers})]
       (transit/read reader))))
 
 (defn receive
@@ -58,6 +62,8 @@
       (log/error e "Could not send message"))))
 
 (defn new
-  "Returns a new message map, given a key, value, and TTL."
-  [k v ttl]
-  {:k k :v v :ttl ttl})
+  "Give node metadata, a key, a value, and a time-to-live, returns a new
+  Message record."
+  [{:keys [http-addr]} k v ttl]
+  (let [node-meta {:http-addr http-addr}]
+    (Message. node-meta k v ttl)))

@@ -12,9 +12,11 @@
   ;; For now use a real socket, but this should probably be stubbed out in the
   ;; future.
   (let [addr   "localhost:6060"
+        http-addr "localhost:6160"
         socket (apply udp/socket (util/parse-addr addr))
         msg    (future (message/receive socket))
-        expect (message/new "foo" "bar" 0)]
+        expect (message/new {:http-addr http-addr} "foo" "bar" 0)]
+
     ;; 1. Send a message to the socket.
     (message/send socket addr expect)
 
