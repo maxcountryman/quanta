@@ -26,8 +26,8 @@
 
 (defn send-heartbeat
   "Sends a heartbeat message to a peer."
-  [socket node peer addr]
-  (->> (message/new node (addr->peer-key addr) {0 (timestamp)} 0)
+  [socket peer addr]
+  (->> (message/new (addr->peer-key addr) {0 (timestamp)} 0)
        (message/send socket peer)))
 
 (defn send-messages
@@ -50,7 +50,7 @@
   ;;       number of known peers.
   (when (seq forwards)
     (when-let [peer (rand-peer node)]
-      (send-heartbeat socket node peer addr)
+      (send-heartbeat socket peer addr)
       (send-messages socket peer forwards)))
 
   ;; Send back any updated values.
@@ -77,19 +77,19 @@
 (defn forward!
   "Returns a message intended to be forwarded onto a peer or if there are no
   relevant changes nil. This function may mutate the datastore!"
-  [store node k v ttl]
+  [store k v ttl]
   (let [updates (database/update-vector! store k v)]
     (when (and (seq updates) (> ttl 0))
-      (message/new node k updates (dec ttl)))))
+      (message/new k updates (dec ttl)))))
 
 (defn response
   "Returns a message intended to be sent back to the sending peer or if there
   are no relevant changes nil."
-  [store node k v ttl]
+  [store k v ttl]
   (when (> ttl 0)
     (let [updates (database/max-vector store k v)]
       (when (seq updates)
-        (message/new node k updates (dec ttl))))))
+        (message/new k updates (dec ttl))))))
 
 (defn message-type
   "Returns either :aggregate, :search, or :default."
@@ -111,14 +111,14 @@
   [node {:keys [addr k v ttl]}]
   (let [store (get-store node k)]
     {:addr      addr
-     :forwards  (keep #(forward! store node % v ttl) [k])
-     :responses (keep #(response store node % v ttl) [k])}))
+     :forwards  (keep #(forward! store % v ttl) [k])
+     :responses (keep #(response store % v ttl) [k])}))
 
 (defmethod handle-message :search
   [node {:keys [addr k v ttl]}]
   (let [store (get-store node k)
         ks    (database/match store k)
-        msgs  (map #(-> (message/new node % v ttl)
+        msgs  (map #(-> (message/new % v ttl)
                         (assoc :addr addr)) ks)]
 
     (apply (partial merge-with (fn [left right]
@@ -140,5 +140,5 @@
     (database/put! store k agg)
 
     {:addr      addr
-     :forwards  (keep #(forward! store node % v ttl) [k])
-     :responses (keep #(response store node % v ttl) [k])}))
+     :forwards  (keep #(forward! store % v ttl) [k])
+     :responses (keep #(response store % v ttl) [k])}))
