@@ -8,7 +8,9 @@
             [quanta.message        :as message]
             [quanta.udp            :as udp]
             [quanta.util           :as util])
-  (:import [java.net DatagramSocket InetSocketAddress]))
+  (:import [quanta.database LevelDBStore]
+           [java.net DatagramSocket]
+           [org.eclipse.jetty.server Server]))
 
 ;;
 ;; Node lifecycle.
@@ -62,10 +64,13 @@
   "Given a node map, stops all the active proccesses and removes them from the
   map if the node has been started. Otherwise returns the provided map
   unaltered. Calling this function is idempotent."
-  [{:keys [running server socket store] :as node}]
+  [{:keys [running
+           ^Server server
+           ^DatagramSocket socket
+           ^LevelDBStore store] :as node}]
   (if running
     (do (future-cancel running)
-        (.close server)
+        (.stop server)
         (.close store)
         (.close socket)
         (dissoc node :running :server :socket :store))

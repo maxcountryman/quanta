@@ -8,7 +8,8 @@
             [clojure.set                :refer [difference union]]
             [clojure.string             :as string]
             [quanta.message             :as message])
-  (:import [java.io Closeable]))
+  (:import [clj_leveldb LevelDB]
+           [java.io Closeable]))
 
 ;;
 ;; Trigram indexing.
@@ -113,14 +114,13 @@
   [a]
   (MemoryStore. a))
 
-(deftype LevelDBStore [db tindex]
+(deftype LevelDBStore [^LevelDB db ^LevelDB tindex]
   Store
   (get [_ k]
     (level/get db k))
 
   (match [_ substring]
     (let [[re s] (k->re-s substring)]
-      ;;(prn re s)
       (query-trigrams tindex s re)))
 
   (put! [_ k v]
