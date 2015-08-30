@@ -4,22 +4,27 @@
 
 [![Build Status](https://travis-ci.org/maxcountryman/quanta.svg?branch=master)](https://travis-ci.org/maxcountryman/quanta)
 
-Quanta is a distributed CRDT of keys and values.
+Quanta is a distributed, highly-available, eventually-consistent sketch
+database.
 
-Keys may be associated with values, which are sparse vectors of integers.
-These vectors may be updated only via element-wise max. This constraint
-yields a CRDT property because the max operation is idempotent, commutative,
-and associative.
+Quanta is a specialized key-value store, where keys are strings and values are
+sparse integer vectors. Values can only be modified with element-wise max.
+This limitation ensures a [CRDT](https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type)
+property--the `max` operation is associative, commutative, and idempotent. That
+means that updates can be performed in any order, in any combination, and as 
+many times as we want without inconsistency.
 
-What is a data type with such contraints useful for?
-
-A data structure with the above property can be used to construct vector
-clocks, bloom filters, and hyperloglog. It is useful so long as values may be
-represented as sparse vectors which grow monotonically.
+While this might seem like a limitation which precludes usefulness, a
+surprising number of interesting applications can be implemented over these
+constraints: bloom filters, vector clocks, and hyperloglog are all examples of
+applications that can be easily implemented using Quanta.
 
 ## Status
 
 Under development and totally unsuitable for production use!
+
+I'm building this as a way to learn about distributed systems, so you should
+not necessarily expect this to ever be fit for use in a realworld system.
 
 ## Installation
 
